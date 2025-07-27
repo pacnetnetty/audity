@@ -5,9 +5,9 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 
 public class Handler implements RequestHandler<String, String> {
 
-    @Override
-    public String handleRequest(String input, Context context) {
-        context.getLogger().log("Input: " + input);
-        return "Hello, " + input;
-    }
+  @Override
+  public String handleRequest(String input, Context context) {
+    context.getLogger().log("Input: " + input);
+    return "Hello, " + input;
+  }
 }
