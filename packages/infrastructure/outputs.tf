@@ -1,11 +1,7 @@
-output "spring_boot_service_url" {
-  value = aws_api_gateway_deployment.spring_boot_service.invoke_url
-}
+# Example output for VPC ID
+# output "vpc_id" {
+#   description = "The ID of the VPC."
+#   value       = module.network.vpc_id
+# }
 
-output "lambda_function_arn" {
-  value = aws_lambda_function.my_lambda_function.arn
-}
-
-output "electron_app_url" {
-  value = "http://localhost:3000"
-}
+# Add other global outputs as needed
