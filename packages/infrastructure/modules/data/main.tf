@@ -65,7 +65,7 @@ resource "aws_sqs_queue" "transcription_input_queue" {
   sqs_managed_sse_enabled    = true
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.transcription_input_dlq.arn
-    maxReceiveCount     = 3
+    maxReceiveCount     = 2
   })
 }
 resource "aws_sqs_queue_policy" "transcription_input_queue_policy" {
