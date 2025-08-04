@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 resource "aws_s3_bucket" "transcription_bucket" {
   bucket = "${var.app_name}-${var.env_name}-transcriptions"
 }
@@ -25,6 +27,26 @@ resource "aws_s3_bucket_policy" "transcription_bucket_policy" {
         Condition = {
           Bool = {
             "aws:SecureTransport" = "false"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "transcribe.amazonaws.com"
+        }
+        Action = [
+          "s3:ListBucket",
+          "s3:GetObject",
+          "s3:PutObject"
+        ]
+        Resource = [
+          "${aws_s3_bucket.transcription_bucket.arn}/*",
+          aws_s3_bucket.transcription_bucket.arn
+        ]
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
           }
         }
       }

@@ -22,5 +22,5 @@ module "compute" {
   env_name                      = var.env_name
   app_name                      = var.app_name
   transcription_input_queue_arn = module.data.transcription_input_queue_arn
-  transcription_bucket_name     = module.data.transcription_bucket_name
+  transcription_bucket_arn      = module.data.transcription_bucket_arn
 }

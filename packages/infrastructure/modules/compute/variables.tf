@@ -15,7 +15,7 @@ variable "transcription_input_queue_arn" {
   type        = string
 }
 
-variable "transcription_bucket_name" {
-  description = "Name of the transcription input/output bucket."
+variable "transcription_bucket_arn" {
+  description = "ARN of the transcription input/output bucket."
   type        = string
 }

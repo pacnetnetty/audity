@@ -48,6 +48,18 @@ resource "aws_iam_role_policy" "transcription_lambda_policy" {
           "transcribe:GetTranscriptionJob"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:GetObject",
+          "s3:PutObject"
+        ]
+        Resource = [
+          "${var.transcription_bucket_arn}/*",
+          var.transcription_bucket_arn
+        ]
       }
     ]
   })
@@ -61,10 +73,8 @@ resource "aws_lambda_function" "transcription_handler" {
   source_code_hash = filebase64sha256(local.lambdas_jar_path)
   memory_size      = 256
   timeout          = 30
-  environment {
-    variables = {
-      TRANSCRIPTION_BUCKET_NAME = var.transcription_bucket_name
-    }
+  logging_config {
+    log_format = "JSON"
   }
 }
 resource "aws_lambda_event_source_mapping" "transcription_input_queue_mapping" {
