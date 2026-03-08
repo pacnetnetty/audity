@@ -68,7 +68,7 @@ resource "aws_lambda_function" "transcription_handler" {
   function_name    = "${var.app_name}-${var.env_name}-transcription-handler"
   role             = aws_iam_role.transcription_lambda_role.arn
   handler          = "com.audity.lambda.TranscriptionHandler::handleRequest"
-  runtime          = "java17"
+  runtime          = "java25"
   filename         = local.lambdas_jar_path
   source_code_hash = filebase64sha256(local.lambdas_jar_path)
   memory_size      = 256
