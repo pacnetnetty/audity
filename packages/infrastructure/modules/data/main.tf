@@ -1,7 +1,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "transcription_bucket" {
-  bucket = "${var.app_name}-${var.env_name}-transcriptions"
+  bucket = "${var.app_name}-${var.env_name}-transcriptions-${data.aws_caller_identity.current.account_id}"
 }
 resource "aws_s3_bucket_public_access_block" "transcription_bucket_bpa" {
   bucket = aws_s3_bucket.transcription_bucket.id
@@ -82,12 +82,12 @@ resource "aws_sqs_queue_policy" "transcription_input_dlq_policy" {
 }
 resource "aws_sqs_queue" "transcription_input_queue" {
   name                       = "${var.app_name}-${var.env_name}-transcription-input"
-  visibility_timeout_seconds = 30
+  visibility_timeout_seconds = 60
   message_retention_seconds  = 14400 # 4 hrs
   sqs_managed_sse_enabled    = true
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.transcription_input_dlq.arn
-    maxReceiveCount     = 2
+    maxReceiveCount     = 1
   })
 }
 resource "aws_sqs_queue_policy" "transcription_input_queue_policy" {

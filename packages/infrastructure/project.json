@@ -33,7 +33,9 @@
             "VAR_FILE": "envs/prod.tfvars"
           }
         }
-      }
+      },
+      "cache": true,
+      "outputs": ["{projectRoot}/tfplan"]
     },
     "deploy": {
       "executor": "nx:run-commands",

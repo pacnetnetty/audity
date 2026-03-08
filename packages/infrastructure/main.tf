@@ -5,6 +5,12 @@ terraform {
       version = "6.35.1"
     }
   }
+
+  backend "s3" {
+    bucket = "audity-tf-state-pacnetnetty"
+    key    = "audity-tf-state/dev/terraform.tfstate"
+    region = "us-west-2"
+  }
 }
 
 provider "aws" {
