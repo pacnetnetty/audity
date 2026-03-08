@@ -30,6 +30,11 @@
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
+            <artifactId>apache5-client</artifactId>
+            <version>2.42.6</version>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
             <artifactId>transcribe</artifactId>
             <version>${aws.java.sdk.version}</version>
         </dependency>

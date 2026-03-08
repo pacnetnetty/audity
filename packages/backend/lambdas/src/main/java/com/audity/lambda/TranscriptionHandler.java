@@ -2,48 +2,74 @@ package com.audity.lambda;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.amazonaws.services.lambda.runtime.events.SQSBatchResponse;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent.SQSMessage;
 import com.amazonaws.services.lambda.runtime.logging.LogLevel;
-import com.audity.lambda.util.LambdaResponse;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import software.amazon.awssdk.eventnotifications.s3.model.S3EventNotification;
 import software.amazon.awssdk.eventnotifications.s3.model.S3EventNotificationRecord;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.transcribe.TranscribeAsyncClient;
+import software.amazon.awssdk.services.transcribe.TranscribeClient;
 import software.amazon.awssdk.services.transcribe.model.LanguageCode;
 import software.amazon.awssdk.services.transcribe.model.Media;
 import software.amazon.awssdk.services.transcribe.model.StartTranscriptionJobRequest;
 import software.amazon.awssdk.services.transcribe.model.StartTranscriptionJobResponse;
 
-public class TranscriptionHandler implements RequestHandler<SQSEvent, LambdaResponse> {
+public class TranscriptionHandler implements RequestHandler<SQSEvent, SQSBatchResponse> {
 
-  private static final TranscribeAsyncClient transcribeClient =
-      TranscribeAsyncClient.builder()
+  private static final TranscribeClient transcribeClient =
+      TranscribeClient.builder()
           .region(Region.of(System.getenv().getOrDefault("AWS_REGION", "us-east-1")))
           .build();
 
+  private static final ExecutorService vtExecutor = Executors.newVirtualThreadPerTaskExecutor();
+
   @Override
-  public LambdaResponse handleRequest(SQSEvent event, Context context) {
+  public SQSBatchResponse handleRequest(SQSEvent event, Context context) {
     List<SQSMessage> messages = event.getRecords();
     context.getLogger().log("Number of messages: " + messages.size(), LogLevel.DEBUG);
 
-    List<CompletableFuture<StartTranscriptionJobResponse>> futures =
-        messages.stream()
-            .map(SQSMessage::getBody)
-            .map(S3EventNotification::fromJson)
-            .flatMap(notification -> notification.getRecords().stream())
-            .map(record -> startTranscribeJobForRecord(record, context))
-            .toList();
+    List<SQSBatchResponse.BatchItemFailure> batchItemFailures =
+        new ArrayList<SQSBatchResponse.BatchItemFailure>();
 
-    CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+    // saving message IDs to allow for reporting partial failures in this batch of messages
+    Map<String, Future<StartTranscriptionJobResponse>> messageIdToFuture = new HashMap<>();
+    for (SQSMessage message : messages) {
+      Future<StartTranscriptionJobResponse> future =
+          S3EventNotification.fromJson(message.getBody()).getRecords().stream()
+              .map(record -> startTranscribeJobForRecord(record, context))
+              .findFirst()
+              .orElseThrow();
 
-    context.getLogger().log("All Transcribe jobs started successfully", LogLevel.INFO);
-    return new LambdaResponse(200, "All Transcribe jobs started successfully");
+      messageIdToFuture.put(message.getMessageId(), future);
+    }
+
+    for (Map.Entry<String, Future<StartTranscriptionJobResponse>> entry :
+        messageIdToFuture.entrySet()) {
+      try {
+        entry.getValue().get();
+      } catch (ExecutionException e) {
+        context.getLogger().log("Error starting Transcribe job: " + e.getMessage(), LogLevel.ERROR);
+        batchItemFailures.add(new SQSBatchResponse.BatchItemFailure(entry.getKey()));
+      } catch (InterruptedException e) {
+        context.getLogger().log("Thread interrupt: " + e.getMessage(), LogLevel.ERROR);
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+      }
+    }
+
+    return new SQSBatchResponse(batchItemFailures);
   }
 
-  private CompletableFuture<StartTranscriptionJobResponse> startTranscribeJobForRecord(
+  private Future<StartTranscriptionJobResponse> startTranscribeJobForRecord(
       S3EventNotificationRecord record, Context context) {
 
     String bucketName = record.getS3().getBucket().getName();
@@ -71,29 +97,15 @@ public class TranscriptionHandler implements RequestHandler<SQSEvent, LambdaResp
             .outputKey("output/" + kbId + "/" + jobName + ".json")
             .build();
 
-    return transcribeClient
-        .startTranscriptionJob(request)
-        .whenComplete(
-            (response, error) -> {
-              if (error != null) {
-                context
-                    .getLogger()
-                    .log(
-                        "Failed to start Transcribe job for "
-                            + mediaUri
-                            + ": "
-                            + error.getMessage(),
-                        LogLevel.ERROR);
-
-                throw new RuntimeException(error);
-              } else {
-                context
-                    .getLogger()
-                    .log(
-                        "Started Transcribe job: "
-                            + response.transcriptionJob().transcriptionJobName(),
-                        LogLevel.INFO);
-              }
-            });
+    return vtExecutor.submit(
+        () -> {
+          StartTranscriptionJobResponse response = transcribeClient.startTranscriptionJob(request);
+          context
+              .getLogger()
+              .log(
+                  "Started Transcribe job: " + response.transcriptionJob().transcriptionJobName(),
+                  LogLevel.INFO);
+          return response;
+        });
   }
 }

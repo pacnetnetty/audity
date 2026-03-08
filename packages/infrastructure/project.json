@@ -39,9 +39,6 @@
     },
     "deploy": {
       "executor": "nx:run-commands",
-      "dependsOn": [
-        "build"
-      ],
       "options": {
         "command": "terraform apply -auto-approve tfplan",
         "cwd": "packages/infrastructure"
