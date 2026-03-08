@@ -37,12 +37,9 @@ public class TranscriptionHandler implements RequestHandler<SQSEvent, SQSBatchRe
     List<SQSMessage> messages = event.getRecords();
     context.getLogger().log("Number of messages: " + messages.size(), LogLevel.DEBUG);
 
-    List<SQSBatchResponse.BatchItemFailure> batchItemFailures =
-        new ArrayList<SQSBatchResponse.BatchItemFailure>();
-
     // saving message IDs to allow for reporting partial failures in this batch of messages
-    Map<String, Future<StartTranscriptionJobResponse>> messageIdToFuture = new HashMap<>();
-    for (SQSMessage message : messages) {
+    var messageIdToFuture = new HashMap<String, Future<StartTranscriptionJobResponse>>();
+    for (var message : messages) {
       Future<StartTranscriptionJobResponse> future =
           S3EventNotification.fromJson(message.getBody()).getRecords().stream()
               .map(record -> startTranscribeJobForRecord(record, context))
@@ -52,6 +49,7 @@ public class TranscriptionHandler implements RequestHandler<SQSEvent, SQSBatchRe
       messageIdToFuture.put(message.getMessageId(), future);
     }
 
+    var batchItemFailures = new ArrayList<SQSBatchResponse.BatchItemFailure>();
     for (Map.Entry<String, Future<StartTranscriptionJobResponse>> entry :
         messageIdToFuture.entrySet()) {
       try {
