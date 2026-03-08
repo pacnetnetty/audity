@@ -1,0 +1,82 @@
+{
+  "name": "infrastructure",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": ".",
+  "prefix": "infrastructure",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "api-service:build",
+        "lambdas:build"
+      ],
+      "options": {
+        "commands": [
+          "terraform init",
+          "terraform plan -var-file=$VAR_FILE -out=tfplan"
+        ],
+        "parallel": false,
+        "cwd": "packages/infrastructure",
+        "env": {
+          "VAR_FILE": "envs/dev.tfvars"
+        }
+      },
+      "configurations": {
+        "dev": {
+          "env": {
+            "VAR_FILE": "envs/dev.tfvars"
+          }
+        },
+        "prod": {
+          "env": {
+            "VAR_FILE": "envs/prod.tfvars"
+          }
+        }
+      }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "build"
+      ],
+      "options": {
+        "command": "terraform apply -auto-approve tfplan",
+        "cwd": "packages/infrastructure"
+      }
+    },
+    "destroy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform destroy -var-file=$VAR_FILE -auto-approve",
+        "cwd": "packages/infrastructure",
+        "env": {
+          "VAR_FILE": "envs/dev.tfvars"
+        }
+      },
+      "configurations": {
+        "dev": {
+          "env": {
+            "VAR_FILE": "envs/dev.tfvars"
+          }
+        },
+        "prod": {
+          "env": {
+            "VAR_FILE": "envs/prod.tfvars"
+          }
+        }
+      }
+    },
+    "show-plan": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform show tfplan",
+        "cwd": "packages/infrastructure"
+      }
+    }
+  },
+  "tags": [
+    "type:infra",
+    "scope:infrastructure"
+  ]
+}

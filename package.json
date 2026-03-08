@@ -1,19 +1,29 @@
 {
   "name": "@audity/source",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "build": "nx run-many --target=build --parallel=1 && npm run show-plan",
+    "build:with-tests": "nx run-many --target=build:with-tests --parallel=1",
+    "build:api": "nx build api-service",
+    "build:lambdas": "nx build lambdas",
+    "build:infra": "nx build infrastructure",
+    "show-plan": "nx run infrastructure:show-plan",
+    "deploy": "nx run infrastructure:deploy",
+    "test": "nx run-many --target=test",
+    "clean": "nx run-many --target=clean",
+    "format": "nx run lambdas:format"
+  },
   "private": true,
   "dependencies": {},
   "devDependencies": {
-    "@nx/node": "21.3.7",
-    "@nx/workspace": "21.3.7",
-    "nx": "21.3.7"
+    "@nx/node": "^21.3.7",
+    "@nx/workspace": "^21.3.7",
+    "nx": "^21.3.7"
   },
   "workspaces": [
     "packages/backend/api-service",
     "packages/backend/lambdas",
-    "packages/frontend/desktop-recorder",
     "packages/frontend/website",
     "packages/infrastructure"
   ]

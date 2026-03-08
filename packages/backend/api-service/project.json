@@ -1,0 +1,47 @@
+{
+  "name": "api-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "src",
+  "prefix": "api-service",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./mvnw clean package -DskipTests",
+        "cwd": "packages/backend/api-service"
+      },
+      "configurations": {
+        "production": {
+          "command": "./mvnw clean package -DskipTests"
+        }
+      },
+      "cache": true,
+      "outputs": ["{projectRoot}/target"]
+    },
+    "build:with-tests": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./mvnw clean package",
+        "cwd": "packages/backend/api-service"
+      },
+      "cache": true,
+      "outputs": ["{projectRoot}/target"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./mvnw test",
+        "cwd": "packages/backend/api-service"
+      }
+    },
+    "clean": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./mvnw clean",
+        "cwd": "packages/backend/api-service"
+      }
+    }
+  },
+  "tags": ["type:app", "scope:backend"]
+}
