@@ -34,7 +34,6 @@
           }
         }
       },
-      "cache": true,
       "outputs": ["{projectRoot}/tfplan"]
     },
     "deploy": {
