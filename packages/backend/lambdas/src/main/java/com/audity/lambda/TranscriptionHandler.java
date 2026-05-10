@@ -20,24 +20,33 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.transcribe.TranscribeClient;
 import software.amazon.awssdk.services.transcribe.model.LanguageCode;
 import software.amazon.awssdk.services.transcribe.model.Media;
+import software.amazon.awssdk.services.transcribe.model.Settings;
 import software.amazon.awssdk.services.transcribe.model.StartTranscriptionJobRequest;
 import software.amazon.awssdk.services.transcribe.model.StartTranscriptionJobResponse;
 
 public class TranscriptionHandler implements RequestHandler<SQSEvent, SQSBatchResponse> {
 
-  private static final TranscribeClient transcribeClient =
+  private static TranscribeClient transcribeClient =
       TranscribeClient.builder()
-          .region(Region.of(System.getenv().getOrDefault("AWS_REGION", "us-east-1")))
+          .region(Region.of(System.getenv().getOrDefault("AWS_REGION", "us-west-2")))
           .build();
 
-  private static final ExecutorService vtExecutor = Executors.newVirtualThreadPerTaskExecutor();
+  private static ExecutorService vtExecutor = Executors.newVirtualThreadPerTaskExecutor();
+
+  public TranscriptionHandler() {}
+
+  TranscriptionHandler(TranscribeClient transcribeClient, ExecutorService vtExecutor) {
+    TranscriptionHandler.transcribeClient = transcribeClient;
+    TranscriptionHandler.vtExecutor = vtExecutor;
+  }
 
   @Override
   public SQSBatchResponse handleRequest(SQSEvent event, Context context) {
     List<SQSMessage> messages = event.getRecords();
     context.getLogger().log("Number of messages: " + messages.size(), LogLevel.DEBUG);
 
-    // saving message IDs to allow for reporting partial failures in this batch of messages
+    // saving message IDs to allow for reporting partial failures in this batch of
+    // messages
     var messageIdToFuture = new HashMap<String, Future<StartTranscriptionJobResponse>>();
     for (var message : messages) {
       Future<StartTranscriptionJobResponse> future =
@@ -85,7 +94,6 @@ public class TranscriptionHandler implements RequestHandler<SQSEvent, SQSBatchRe
         .getLogger()
         .log("Starting Transcribe job: " + jobName + " for " + mediaUri, LogLevel.INFO);
 
-    // TODO: add multi-speaker detection
     var request =
         StartTranscriptionJobRequest.builder()
             .transcriptionJobName(jobName)
@@ -93,6 +101,7 @@ public class TranscriptionHandler implements RequestHandler<SQSEvent, SQSBatchRe
             .media(Media.builder().mediaFileUri(mediaUri).build())
             .outputBucketName(bucketName)
             .outputKey("output/" + kbId + "/" + jobName + ".json")
+            .settings(Settings.builder().showSpeakerLabels(true).maxSpeakerLabels(10).build())
             .build();
 
     return vtExecutor.submit(
